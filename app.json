@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "com.hotsource.giftlist",
     "name": "giftlist",
     "slug": "giftlist",
     "version": "1.0.0",
@@ -11,20 +12,34 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hotsource.giftlist"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.hotsource.giftlist"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "hooks": {
+      "postPublish": [
+        {
+          "file": "sentry-expo/upload-sourcemaps",
+          "config": {
+            "organization": "hotsource",
+            "project": "giftlist"
+          }
+        }
+      ]
+    },
+    "plugins": ["sentry-expo"],
+    "extra": {
+      "eas": {
+        "projectId": "4dc35dba-b7a8-467c-9cc4-73725f0988f8"
+      }
     }
   }
 }
