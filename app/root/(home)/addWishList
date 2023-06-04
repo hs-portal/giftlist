@@ -42,49 +42,11 @@ export default function TabScreen() {
     console.log(JSON.stringify(userData, null, 2));
   });
 */
-  const SwipeableRow = ({ item, index }) => {
-    console.log("item", item, item.title);
-    const renderLeftActions = (progress, dragX) => {
-      return (
-        <RectButton
-          style={styles.leftAction}
-          onPress={() => console.log("Render Left")}
-        >
-          <Text>Render Left</Text>
-        </RectButton>
-      );
-    };
-
-    const renderRightActions = (progress, dragX) => {
-      return (
-        <RectButton
-          style={styles.rightAction}
-          onPress={() => deleteEntry(item)}
-        >
-          <Text>Delete</Text>
-        </RectButton>
-      );
-    };
-
-    return (
-      <Swipeable
-        renderLeftActions={renderLeftActions}
-        renderRightActions={renderRightActions}
-      >
-        <RectButton style={styles.rectButton} onPress={() => alert(item.title)}>
-          <Text style={styles.fromText}>{item.title}</Text>
-          <Text numberOfLines={2} style={styles.messageText}>
-            {item.text}
-          </Text>
-        </RectButton>
-      </Swipeable>
-    );
-  };
 
   return (
     <>
       <AppBar
-        title="Tab Screen"
+        title="New Wishlist"
         tintColor="white"
         trailing={(props) => (
           <HStack fill center>
@@ -93,7 +55,7 @@ export default function TabScreen() {
         )}
       />
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView style={{ paddingBottom: 24 }}>
+        <SafeAreaView style={{ paddingBottom: 16 }}>
           <ListItem.Accordion
             content={
               <ListItem.Content>
@@ -106,7 +68,7 @@ export default function TabScreen() {
             }}
           >
             {
-              <Stack spacing={16} center style={{ padding: 24 }}>
+              <Stack spacing={16} center style={{ padding: 16 }}>
                 <TextInput
                   onChangeText={setEntryTitle}
                   label="Title"

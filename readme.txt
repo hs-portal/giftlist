@@ -44,3 +44,26 @@ Time to actually build the app! Code away, and when ready to build an apk to tes
 
 ## Step 10 ##
 Build packages will be configured here: eas.json. Need to write more on this process, (aka come back to this later!)
+
+
+##NOTES
+
+Replacing material kit with react-native-paper
+npm install react-native-paper
+npm install react-native-safe-area-context
+
+https://callstack.github.io/react-native-paper/docs/guides/getting-started
+
+babel.config.js:
+
+module.exports = function(api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    env: {
+      production: {
+        plugins: ['react-native-paper/babel'],
+      },
+    },
+  };
+};

@@ -1,6 +1,11 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import Realm from "realm";
-import { GiftListItem } from "../schemas";
+import {
+  ProfileData,
+  Wishlist,
+  WishlistItem,
+  WishlistItemComment,
+} from "../schemas";
 import { useAuth } from "./AuthProvider";
 
 const UserContext = React.createContext(null);
@@ -26,7 +31,12 @@ const UserDataProvider = (props) => {
       type: "openImmediately",
     };
     const config = {
-      schema: [GiftListItem.schema],
+      schema: [
+        ProfileData.schema,
+        Wishlist.schema,
+        WishlistItem.schema,
+        WishlistItemComment.schema,
+      ],
       sync: {
         user: user,
         partitionValue: `${user.id}`,
@@ -39,7 +49,7 @@ const UserDataProvider = (props) => {
     Realm.open(config).then((realm) => {
       realmRef.current = realm;
 
-      const syncUserData = realm.objects("GiftListItem");
+      const syncUserData = realm.objects("Wishlist");
       let sortedUserData = syncUserData.sorted("title");
       setUserData([...sortedUserData]);
 
@@ -62,8 +72,8 @@ const UserDataProvider = (props) => {
     realm.write(() => {
       // Create a new entry in the same partition -- that is, using the same user id.
       realm.create(
-        "GiftListItem",
-        new GiftListItem({
+        "Wishlist",
+        new Wishlist({
           title: newEntryTitle || "New Title",
           url: newEntryURL || "New Url",
           description: newEntryDescription || "New Description",
@@ -79,7 +89,7 @@ const UserDataProvider = (props) => {
     realm.write(() => {
       realm.delete(entry);
       // after deleting, we get the Links again and update them
-      setUserData([...realm.objects("GiftListItem").sorted("title")]);
+      setUserData([...realm.objects("Wishlist").sorted("title")]);
     });
   };
 

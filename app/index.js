@@ -10,7 +10,7 @@ Sentry.init({
 });
 
 const Root = () => {
-  return <Redirect href={"/root"} />;
+  return <Redirect href={"/root/(home)"} />;
 };
 
 export default Root;

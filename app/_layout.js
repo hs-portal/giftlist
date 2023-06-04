@@ -1,22 +1,23 @@
 import { Stack } from "expo-router";
-import { Provider, defaultTheme } from "@react-native-material/core";
+import {
+  MD3LightTheme as DefaultTheme,
+  PaperProvider,
+} from "react-native-paper";
 import { AuthProvider } from "../providers/AuthProvider";
+import { lightTheme, darkTheme } from "../theme";
+
+const theme = {
+  ...DefaultTheme,
+  //version: 2,
+  colors: {
+    ...lightTheme.colors,
+  },
+};
 
 export default function Layout() {
   return (
     <AuthProvider>
-      <Provider
-        theme={{
-          // extend the default theme
-          ...defaultTheme,
-          palette: {
-            ...defaultTheme.palette,
-            // override the primary color
-            primary: { main: "#07a7ff", on: "white" },
-            secondary: { main: "#E4962D", on: "black" },
-          },
-        }}
-      >
+      <PaperProvider theme={theme}>
         <Stack>
           <Stack.Screen
             name="(auth)"
@@ -37,7 +38,7 @@ export default function Layout() {
             }}
           />
         </Stack>
-      </Provider>
+      </PaperProvider>
     </AuthProvider>
   );
 }
