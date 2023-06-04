@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Button,
@@ -10,7 +10,13 @@ import {
   Divider,
   useTheme,
   IconButton,
+  Dialog,
+  Portal,
+  RadioButton,
 } from "react-native-paper";
+import { format, getUnixTime } from "date-fns";
+
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import { useRouter } from "expo-router";
@@ -29,10 +35,39 @@ export default function CreateWishlist() {
     description: "",
   });
   const [newWishlistItems, setNewWishlistItems] = useState([]);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [typeDialogueVisible, setTypeDialogueVisible] = useState(false);
+  const [typeChecked, setTypeChecked] = useState("Personal List");
 
-  const handleInput = ({ key, value }) => {
+  const showTypeDialog = () => setTypeDialogueVisible(true);
+
+  const hideTypeDialog = () => setTypeDialogueVisible(false);
+
+  const handleInput = (key, value) => {
     let newData = { ...newWishlistData };
     newData[key] = value;
+    setWishlistData(newData);
+  };
+
+  const handleTypeDialogue = (value) => {
+    hideTypeDialog();
+    let newData = { ...newWishlistData };
+    newData["type"] = value;
+    setWishlistData(newData);
+  };
+
+  const showDatePicker = () => {
+    setDatePickerVisibility(true);
+  };
+
+  const hideDatePicker = () => {
+    setDatePickerVisibility(false);
+  };
+
+  const handleDateConfirm = (newDate) => {
+    hideDatePicker();
+    let newData = { ...newWishlistData };
+    newData["date"] = newDate;
     setWishlistData(newData);
   };
 
@@ -68,7 +103,7 @@ export default function CreateWishlist() {
       </IconButton>
     );
   };
-
+  console.log(newWishlistData);
   return (
     <>
       <ThemeAppbar
@@ -88,21 +123,38 @@ export default function CreateWishlist() {
           </View>
           <Divider />
           <View style={styles.inputRow}>
-            <TextInput
-              variant="flat"
-              onChangeText={(v) => handleInput("type", v)}
-              value={newWishlistData.type}
-              label="List Type"
-            />
+            <TouchableOpacity onPress={showTypeDialog}>
+              <TextInput
+                variant="flat"
+                //onChangeText={(v) => handleInput("type", v)}
+                value={newWishlistData.type}
+                label="List Type"
+                editable={false}
+              />
+            </TouchableOpacity>
           </View>
           <Divider />
           <View style={styles.inputRow}>
-            <TextInput
-              variant="flat"
-              onChangeText={(v) => handleInput("date", v)}
-              value={newWishlistData.date}
-              label="Event Date"
-            />
+            <TouchableOpacity onPress={showDatePicker}>
+              <TextInput
+                variant="flat"
+                //onChangeText={(v) => handleInput("date", v)}
+                value={
+                  newWishlistData.date
+                    ? format(newWishlistData.date, "dd/MM/yyyy")
+                    : ""
+                }
+                label="Event Date"
+                editable={false}
+              />
+              <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                onConfirm={handleDateConfirm}
+                onCancel={hideDatePicker}
+                date={newWishlistData.date || new Date()}
+              />
+            </TouchableOpacity>
           </View>
           <Divider />
           <View style={styles.inputRow}>
@@ -165,6 +217,30 @@ export default function CreateWishlist() {
           </List.Section>
         </SafeAreaView>
       </ScrollView>
+      <Portal>
+        <Dialog visible={typeDialogueVisible} onDismiss={hideTypeDialog}>
+          <Dialog.Title>Wishlist Type</Dialog.Title>
+          <Dialog.Content>
+            <RadioButton.Group
+              onValueChange={(value) => setTypeChecked(value)}
+              value={typeChecked}
+            >
+              <RadioButton.Item label="Personal List" value="Personal List" />
+              <RadioButton.Item
+                label="Representitive List"
+                value="Representitive List"
+              />
+              <RadioButton.Item label="Group List" value="Group List" />
+            </RadioButton.Group>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={hideTypeDialog}>Cancel</Button>
+            <Button onPress={() => handleTypeDialogue(typeChecked)}>
+              Confirm
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </>
   );
 }
