@@ -31,7 +31,7 @@ export default function TabScreen() {
   const [entryURL, setEntryURL] = useState("");
   const [entryDescription, setEntryDescription] = useState("");
 
-  const { createEntry, deleteEntry, closeRealm, userData } = useUserData();
+  const { createEntry, deleteEntry, userData } = useUserData();
 
   const onClickEntry = (entry) => {
     console.log(entry.title);
@@ -45,15 +45,7 @@ export default function TabScreen() {
 
   return (
     <>
-      <AppBar
-        title="New Wishlist"
-        tintColor="white"
-        trailing={(props) => (
-          <HStack fill center>
-            <Logout closeRealm={closeRealm} />
-          </HStack>
-        )}
-      />
+      <AppBar title="New Wishlist" tintColor="white" />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaView style={{ paddingBottom: 16 }}>
           <ListItem.Accordion

@@ -18,12 +18,7 @@ const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(app.currentUser);
 
-  const [accessToken, setAccessToken] = useState("");
-  const [idToken, setIdToken] = useState("");
-
   const [userInfo, setUserInfo] = useState(null);
-
-  const redirectUrl = Linking.createURL("/");
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId:
@@ -46,7 +41,8 @@ const AuthProvider = ({ children }) => {
     const config = {
       sync: {
         user,
-        partitionValue: `user=${user.id}`,
+        flexible: true,
+        //partitionValue: user.id,
       },
     };
 
@@ -69,20 +65,17 @@ const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (response?.type === "success") {
-      if (accessToken !== response.authentication.accessToken) {
-        console.log("response was succesful: ");
-
-        //setAccessToken(response.authentication.accessToken);
-        //setIdToken(response.authentication.idToken);
-        console.log("idtoken:", response.authentication.idToken);
-        getUserInfo(
-          response.authentication,
-          response.authentication.accessToken,
-          response.authentication.idToken
-        );
-      }
+      console.log("response was succesful: ");
+      //setAccessToken(response.authentication.accessToken);
+      //setIdToken(response.authentication.idToken);
+      console.log("idtoken:", response.authentication.idToken);
+      getUserInfo(
+        response.authentication,
+        response.authentication.accessToken,
+        response.authentication.idToken
+      );
     }
-  }, [response, accessToken]);
+  }, [response]);
 
   const getUserInfo = async (auth, accessToken, idToken) => {
     console.log("getUserInfo ");
@@ -114,6 +107,7 @@ const AuthProvider = ({ children }) => {
   const signIn = async (email, password) => {
     const creds = Realm.Credentials.emailPassword(email, password);
     const newUser = await app.logIn(creds);
+    console.log("newUser: ", newUser, "newUserID: ", newUser.id);
     setUser(newUser);
   };
 

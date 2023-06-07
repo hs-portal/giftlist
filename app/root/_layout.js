@@ -28,6 +28,8 @@ export default () => {
           newState.routeNames = modifiedRouteNames;
           newState.routes = modifiedRoutes;
 
+          //console.log("props:", navigation, state);
+
           return (
             <BottomNavigation.Bar
               compact={true}

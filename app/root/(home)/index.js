@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -8,16 +9,18 @@ import {
   Divider,
   useTheme,
 } from "react-native-paper";
-
+import { format } from "date-fns";
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import { useRouter, useNavigation } from "expo-router";
 import { myWishlists } from "../../../dummyData";
 import navigateWithBackParam from "../../../utils/navigateWithBackParam";
+import { useUserData } from "../../../providers/UserDataProvider";
 
 export default function Home() {
   const router = useRouter();
   const navigation = useNavigation();
   const theme = useTheme();
+  const { createWishlist, wishlists } = useUserData();
 
   const ListDescription = ({ type, items }) => {
     return (
@@ -52,6 +55,7 @@ export default function Home() {
           mode="contained"
           style={{ alignSelf: "center" }}
           icon="playlist-plus"
+          /*
           onPress={() =>
             navigateWithBackParam({
               router,
@@ -59,40 +63,45 @@ export default function Home() {
               route: "/root/(home)/createWishlist",
             })
           }
+          */
+          onPress={() => createWishlist()}
         >
           Create Wishlist
         </Button>
         <List.Section>
-          {myWishlists.map((wishlist, index) => {
-            return (
-              <>
-                {index > 0 && <Divider />}
-                <List.Item
-                  onPress={() =>
-                    navigateWithBackParam({
-                      router,
-                      navigation,
-                      route: "/root/(home)/viewWishlist",
-                      extraParams: { wishlistID: index },
-                    })
-                  }
-                  key={`wishlist-${index}`}
-                  title={wishlist.title}
-                  description={(props) => (
-                    <ListDescription
-                      {...props}
-                      type={wishlist.type}
-                      items={wishlist.items.length}
-                    />
-                  )}
-                  left={(props) => (
-                    <List.Icon {...props} icon="playlist-check" />
-                  )}
-                  right={() => <DueDate date={wishlist.date} />}
-                />
-              </>
-            );
-          })}
+          {wishlists &&
+            wishlists.length > 0 &&
+            wishlists.map((wishlist, index) => {
+              return (
+                <React.Fragment key={`wishlist-${index}`}>
+                  {index > 0 && <Divider />}
+                  <List.Item
+                    onPress={() =>
+                      navigateWithBackParam({
+                        router,
+                        navigation,
+                        route: "/root/(home)/viewWishlist",
+                        extraParams: { wishlistID: index },
+                      })
+                    }
+                    title={wishlist.title}
+                    description={(props) => (
+                      <ListDescription
+                        {...props}
+                        type={wishlist.type}
+                        items={wishlist.items?.length || 0}
+                      />
+                    )}
+                    left={(props) => (
+                      <List.Icon {...props} icon="playlist-check" />
+                    )}
+                    right={() => (
+                      <DueDate date={format(wishlist.date, "dd/MM/yyyy")} />
+                    )}
+                  />
+                </React.Fragment>
+              );
+            })}
         </List.Section>
       </SafeAreaView>
     </>

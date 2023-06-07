@@ -1,17 +1,16 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import Realm from "realm";
-import {
-  ProfileData,
-  Wishlist,
-  WishlistItem,
-  WishlistItemComment,
-} from "../schemas";
+import { ProfileData, Wishlist, WishlistItem } from "../schemas";
 import { useAuth } from "./AuthProvider";
+import { ObjectId } from "bson";
 
-const UserContext = React.createContext(null);
+const DataContext = React.createContext(null);
 
 const UserDataProvider = (props) => {
-  const [userData, setUserData] = useState([]);
+  const [profileData, setProfileData] = useState([]);
+  const [userContacts, setUserContacts] = useState([]);
+  const [wishlists, setWishlists] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState([]);
   const { user } = useAuth();
 
   // Use a Ref to store the realm rather than the state because it is not
@@ -25,39 +24,55 @@ const UserDataProvider = (props) => {
       return;
     }
 
+    setProfileData(user.customData);
+    //console.log("userID: ", user.id, "userCustomData: ", user.customData);
     // Enables offline-first: opens a local realm immediately without waiting
     // for the download of a synchronized realm to be completed.
     const OpenRealmBehaviorConfiguration = {
       type: "openImmediately",
     };
+
     const config = {
-      schema: [
-        ProfileData.schema,
-        Wishlist.schema,
-        WishlistItem.schema,
-        WishlistItemComment.schema,
-      ],
+      schema: [ProfileData.schema, Wishlist.schema, WishlistItem.schema],
       sync: {
         user: user,
-        partitionValue: `${user.id}`,
+        flexible: true,
+        //partitionValue: `${user.id}`,
         newRealmFileBehavior: OpenRealmBehaviorConfiguration,
         existingRealmFileBehavior: OpenRealmBehaviorConfiguration,
       },
     };
-
+    /*
     // open a realm for this particular project and get all Data
     Realm.open(config).then((realm) => {
       realmRef.current = realm;
 
-      const syncUserData = realm.objects("Wishlist");
-      let sortedUserData = syncUserData.sorted("title");
-      setUserData([...sortedUserData]);
+      const syncWishlists = realm.objects("Wishlist");
+      setWishlists([...syncWishlists]);
+      syncWishlists.addListener(() => {
+        //console.log("Got new Wishlists!:", JSON.stringify(syncWishlists, null, 2));
+        setWishlists([...syncWishlists]);
+      });
 
-      // we observe changes on the Data, in case Sync informs us of changes
-      // started in other devices (or the cloud)
-      sortedUserData.addListener(() => {
-        console.log("Got new data!:", sortedUserData);
-        setUserData([...sortedUserData]);
+      const syncWishlistItems = realm.objects("WishlistItem");
+      setWishlistItems([...syncWishlistItems]);
+      syncWishlistItems.addListener(() => {
+        //console.log("Got new Wishlist Items!:", JSON.stringify(syncWishlistItems, null, 2));
+        setWishlistItems([...syncWishlistItems]);
+      });
+
+      const syncProfileData = realm
+        .objects("ProfileData")
+        .filtered("location = 'dallas' && price < 300000 && bedrooms = 3", {
+          name: "home-search",
+        });
+      setProfileData([...syncProfileData]);
+      syncProfileData.addListener(() => {
+        console.log(
+          "Got new Profie Data!:",
+          JSON.stringify(syncProfileData, null, 2)
+        );
+        setProfileData([...syncProfileData]);
       });
     });
 
@@ -66,24 +81,109 @@ const UserDataProvider = (props) => {
       closeRealm();
     };
   }, [user]);
+*/
 
-  const createEntry = (newEntryTitle, newEntryURL, newEntryDescription) => {
+    // open a realm for this particular project and get all Data
+    Realm.open(config).then((realm) => {
+      realmRef.current = realm;
+
+      realm.subscriptions.update((mutableSubscriptions) => {
+        mutableSubscriptions.add(realm.objects("ProfileData"));
+      });
+
+      const contactIDs = user.customData.contacts
+        .map((id) => "'" + id + "'")
+        .join(", ");
+      let syncedContactData = realm
+        .objects("ProfileData")
+        .filtered(`_partition IN { ${contactIDs} }`);
+      let sortedContacts = syncedContactData.sorted("firstName");
+      //console.log("NEW Contact DATA:, ", sortedContacts);
+      setUserContacts([...sortedContacts]);
+
+      /*
+      const syncWishlists = realm.objects("Wishlist");
+      setWishlists([...syncWishlists]);
+      syncWishlists.addListener(() => {
+        //console.log("Got new Wishlists!:", JSON.stringify(syncWishlists, null, 2));
+        setWishlists([...syncWishlists]);
+      });
+
+      const syncWishlistItems = realm.objects("WishlistItem");
+      setWishlistItems([...syncWishlistItems]);
+      syncWishlistItems.addListener(() => {
+        //console.log("Got new Wishlist Items!:", JSON.stringify(syncWishlistItems, null, 2));
+        setWishlistItems([...syncWishlistItems]);
+      });
+
+      const syncProfileData = realm
+        .objects("ProfileData")
+        .filtered("location = 'dallas' && price < 300000 && bedrooms = 3", {
+          name: "home-search",
+        });
+      setProfileData([...syncProfileData]);
+      syncProfileData.addListener(() => {
+        console.log(
+          "Got new Profie Data!:",
+          JSON.stringify(syncProfileData, null, 2)
+        );
+        setProfileData([...syncProfileData]);
+      });
+      */
+    });
+
+    return () => {
+      // cleanup function
+      closeRealm();
+    };
+  }, [user]);
+
+  const updateProfileData = (objectID, fName, lName, contacts, avatarColor) => {
+    console.log("update: ", objectID, fName, lName, contacts);
+    const realm = realmRef.current;
+
+    let objID = objectID;
+    if (typeof objID === "string" || objID instanceof String) {
+      objID = new ObjectId(objectID);
+    }
+    realm.write(() => {
+      // Create a new entry in the same partition -- that is, using the same user id.
+      realm.create(
+        "ProfileData",
+        new ProfileData({
+          id: objID,
+          firstName: fName || "",
+          lastName: lName || "",
+          contacts: contacts || [],
+          partition: user.id,
+          avatarColor: avatarColor || "#006b5e",
+        }),
+        "modified"
+      );
+    });
+  };
+
+  const createWishlist = (title, type, items, complete, description, date) => {
     const realm = realmRef.current;
     realm.write(() => {
       // Create a new entry in the same partition -- that is, using the same user id.
       realm.create(
         "Wishlist",
         new Wishlist({
-          title: newEntryTitle || "New Title",
-          url: newEntryURL || "New Url",
-          description: newEntryDescription || "New Description",
+          title: title || "New Title",
+          type: type || "Personal List",
+          items: items || [],
+          complete: complete || false,
           partition: user.id,
+          description: description || "Description",
+          date: date || new Date(),
         })
       );
     });
   };
 
-  // Define the function for deleting a link.
+  // Define the function for deleting a document.
+  /*
   const deleteEntry = (entry) => {
     const realm = realmRef.current;
     realm.write(() => {
@@ -92,30 +192,35 @@ const UserDataProvider = (props) => {
       setUserData([...realm.objects("Wishlist").sorted("title")]);
     });
   };
+*/
 
   const closeRealm = () => {
     const realm = realmRef.current;
     if (realm) {
       realm.close();
       realmRef.current = null;
-      setUserData([]);
+      setWishlists([]);
     }
   };
 
-  // Render the children within the UserContext's provider. The value contains
+  // Render the children within the DataContext's provider. The value contains
   // everything that should be made available to descendants that use the
   // useTasks hook.
   return (
-    <UserContext.Provider
+    <DataContext.Provider
       value={{
-        createEntry,
-        deleteEntry,
+        createWishlist,
+        updateProfileData,
+        //deleteEntry,
         closeRealm,
-        userData,
+        profileData,
+        userContacts,
+        wishlists,
+        wishlistItems,
       }}
     >
       {props.children}
-    </UserContext.Provider>
+    </DataContext.Provider>
   );
 };
 
@@ -123,7 +228,7 @@ const UserDataProvider = (props) => {
 // provides the tasks of the TasksProvider's project and various functions to
 // create, update, and delete the tasks in that project.
 const useUserData = () => {
-  const userData = useContext(UserContext);
+  const userData = useContext(DataContext);
   if (userData == null) {
     throw new Error("useUserData() called outside of a TasksProvider?"); // an alert is not placed because this is an error for the developer not the user
   }

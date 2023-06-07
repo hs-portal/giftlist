@@ -14,10 +14,16 @@ import {
 
 import { useRouter } from "expo-router";
 import { contacts } from "../../../dummyData";
+import { useUserData } from "../../../providers/UserDataProvider";
+import { ScrollView } from "react-native-gesture-handler";
 
 export default function Contacts() {
   const router = useRouter();
   const theme = useTheme();
+  const { userContacts } = useUserData();
+
+  //console.log("userContacts:", userContacts);
+
   const [contactEmail, setContactEmail] = useState("");
   const [inviteDialogueVisible, setInviteDialogueVisible] = useState(false);
 
@@ -31,7 +37,7 @@ export default function Contacts() {
 
     return (
       <Avatar.Text
-        style={{ backgroundColor: theme.colors[contact.color] }}
+        style={{ backgroundColor: contact.avatarColor }}
         size={48}
         label={`${firstInitial}${lastInitial}`}
       />
@@ -40,28 +46,32 @@ export default function Contacts() {
   return (
     <>
       <ThemeAppbar hasDefaultAction title="Contacts" />
-      <SafeAreaView style={{ paddingHorizontal: 16 }}>
-        <Button
-          mode="contained"
-          style={{ alignSelf: "center" }}
-          icon="account-plus"
-          onPress={showInviteDialog}
-        >
-          Invite Contact
-        </Button>
-        <List.Section>
-          {contacts.map((contact, index) => {
-            return (
-              <List.Item
-                key={index}
-                title={`${contact.firstName} ${contact.lastName}`}
-                description={contact.email}
-                left={() => <UserIcon contact={contact} />}
-              />
-            );
-          })}
-        </List.Section>
-      </SafeAreaView>
+      <ScrollView>
+        <SafeAreaView style={{ paddingHorizontal: 16 }}>
+          <Button
+            mode="contained"
+            style={{ alignSelf: "center" }}
+            icon="account-plus"
+            onPress={showInviteDialog}
+          >
+            Invite Contact
+          </Button>
+          <List.Section>
+            {userContacts &&
+              userContacts.length > 0 &&
+              userContacts.map((contact, index) => {
+                return (
+                  <List.Item
+                    key={index}
+                    title={`${contact.firstName} ${contact.lastName}`}
+                    description={`${contact.firstName}${contact.lastName}@email.com`}
+                    left={() => <UserIcon contact={contact} />}
+                  />
+                );
+              })}
+          </List.Section>
+        </SafeAreaView>
+      </ScrollView>
       <Portal>
         <Dialog visible={inviteDialogueVisible} onDismiss={hideInviteDialog}>
           <Dialog.Title>Invite Contact</Dialog.Title>

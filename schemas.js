@@ -1,20 +1,13 @@
 import { ObjectId } from "bson";
 
 class ProfileData {
-  constructor({
-    firstName,
-    lastName,
-    contacts,
-    wishlists,
-    partition,
-    id = new ObjectId(),
-  }) {
+  constructor({ id, firstName, lastName, contacts, avatarColor, partition }) {
     this._partition = partition;
     this._id = id;
     this.firstName = firstName;
     this.lastName = lastName;
     this.contacts = contacts;
-    this.wishlists = wishlists;
+    this.avatarColor = avatarColor;
   }
 
   static schema = {
@@ -25,7 +18,7 @@ class ProfileData {
       firstName: "string",
       lastName: "string",
       contacts: { type: "list", objectType: "string" },
-      wishlists: "Wishlist[]",
+      avatarColor: "string",
     },
     primaryKey: "_id",
   };
@@ -35,9 +28,9 @@ class Wishlist {
   constructor({
     title,
     type,
-    items,
-    profile,
     complete,
+    date,
+    description,
     partition,
     id = new ObjectId(),
   }) {
@@ -45,9 +38,9 @@ class Wishlist {
     this._id = id;
     this.title = title;
     this.type = type;
-    this.items = items;
     this.complete = complete;
-    this.profile = profile;
+    this.date = date;
+    this.description = description;
   }
 
   static schema = {
@@ -57,12 +50,8 @@ class Wishlist {
       _partition: "string",
       title: "string",
       type: "string",
-      items: "WishlistItem[]",
-      profile: {
-        type: "linkingObjects",
-        objectType: "ProfileData",
-        property: "wishlists",
-      },
+      date: "date",
+      description: "string",
       complete: "bool",
     },
     primaryKey: "_id",
@@ -73,9 +62,9 @@ class WishlistItem {
   constructor({
     title,
     url,
+    price,
     description,
     purchased,
-    comments,
     wishlist,
     partition,
     id = new ObjectId(),
@@ -86,7 +75,7 @@ class WishlistItem {
     this.url = url;
     this.description = description;
     this.purchased = purchased;
-    this.comments = comments;
+    this.price = price;
     this.wishlist = wishlist;
   }
 
@@ -99,17 +88,13 @@ class WishlistItem {
       url: "string",
       description: "string",
       purchased: "bool",
-      comments: "WishlistItemComment[]",
-      wishlist: {
-        type: "linkingObjects",
-        objectType: "Wishlist",
-        property: "items",
-      },
+      price: "string",
+      wishlist: "objectId",
     },
     primaryKey: "_id",
   };
 }
-
+/*
 class WishlistItemComment {
   constructor({ text, date, wishlistitem, partition, id = new ObjectId() }) {
     this._partition = partition;
@@ -135,5 +120,5 @@ class WishlistItemComment {
     primaryKey: "_id",
   };
 }
-
-export { ProfileData, Wishlist, WishlistItem, WishlistItemComment };
+*/
+export { ProfileData, Wishlist, WishlistItem };
