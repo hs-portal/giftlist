@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -11,49 +11,136 @@ import {
   useTheme,
   IconButton,
   Dialog,
+  Modal,
   Portal,
   RadioButton,
 } from "react-native-paper";
-import { format, getUnixTime } from "date-fns";
+import { format } from "date-fns";
 
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 import ThemeAppbar from "../../../components/ThemeAppbar";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScrollView } from "react-native-gesture-handler";
+import { useData } from "../../../providers/DataProvider";
+import { useUser } from "@realm/react";
 
 export default function CreateWishlist() {
   const router = useRouter();
   const theme = useTheme();
+  const user = useUser();
+  const { wishlistID } = useLocalSearchParams();
+  const { wishlists, updateWishlistData, wishlistItems, createWishlistItem } =
+    useData();
+
+  const [aciveWishlistItems, setActiveWishlistItems] = useState([]);
 
   const [itemExpanded, setItemExpanded] = useState();
+  const [itemModalVisible, setItemModalVisible] = useState(false);
 
-  const [newWishlistData, setWishlistData] = useState({
+  const [newWishlistItemData, setNewWishlistItemData] = useState({
     title: "",
-    type: "Personal List",
-    date: "",
     description: "",
+    url: "",
+    price: "",
   });
-  const [newWishlistItems, setNewWishlistItems] = useState([]);
+  const [newWishlistItemDataError, setNewWishlistItemDataError] =
+    useState(false);
+
+  const [editWishlistData, setEditWishlistData] = useState({});
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [typeDialogueVisible, setTypeDialogueVisible] = useState(false);
   const [typeChecked, setTypeChecked] = useState("Personal List");
+
+  useEffect(() => {
+    let currWishlist = wishlists.find((wl) => {
+      if (wl._id.toString() == wishlistID) {
+        return wl;
+      }
+    });
+
+    let currWishlistData = {
+      title: currWishlist.title || "",
+      type: currWishlist.type || "Personal List",
+      complete: currWishlist.complete || false,
+      date: currWishlist.date || new Date(),
+      description: currWishlist.description || "",
+      _partition: currWishlist._partition || user.id,
+      _id: currWishlist._id,
+    };
+    console.log("testData", currWishlistData);
+    setEditWishlistData(currWishlistData);
+  }, [wishlists]);
+
+  useEffect(() => {
+    let items = [];
+
+    wishlistItems.forEach((i) => {
+      if (i.wishlist.toString() == wishlistID) {
+        items.push(i);
+      }
+    });
+    setActiveWishlistItems(items);
+  }, [wishlistItems]);
+
+  const showNewItemModal = () => setItemModalVisible(true);
+  const hideNewItemModal = () => {
+    setItemModalVisible(false);
+    setNewWishlistItemData({
+      title: "",
+      description: "",
+      url: "",
+      price: "",
+    });
+    setNewWishlistItemDataError(false);
+  };
+
+  const handleNewItemInput = (key, value) => {
+    if (key === "title") {
+      if (value === "") {
+        setNewWishlistItemDataError(true);
+      } else {
+        setNewWishlistItemDataError(false);
+      }
+    }
+    if (key === "price") {
+      const regex = /^[0-9\b]+$/;
+      if (!regex.test(value) && value != "") {
+        return;
+      }
+    }
+    let newData = { ...newWishlistItemData };
+    newData[key] = value;
+    setNewWishlistItemData(newData);
+  };
+
+  const saveNewWishlistItem = () => {
+    if (newWishlistItemData.title === "") {
+      setNewWishlistItemDataError(true);
+      return;
+    }
+    let newItemData = { ...newWishlistItemData };
+    newItemData.wishlist = editWishlistData._id;
+    createWishlistItem(newItemData);
+    hideNewItemModal();
+  };
 
   const showTypeDialog = () => setTypeDialogueVisible(true);
 
   const hideTypeDialog = () => setTypeDialogueVisible(false);
 
   const handleInput = (key, value) => {
-    let newData = { ...newWishlistData };
+    let newData = { ...editWishlistData };
     newData[key] = value;
-    setWishlistData(newData);
+    setEditWishlistData(newData);
   };
 
   const handleTypeDialogue = (value) => {
     hideTypeDialog();
-    let newData = { ...newWishlistData };
+    let newData = { ...editWishlistData };
     newData["type"] = value;
-    setWishlistData(newData);
+    setEditWishlistData(newData);
+    updateWishlist(newData);
   };
 
   const showDatePicker = () => {
@@ -66,9 +153,14 @@ export default function CreateWishlist() {
 
   const handleDateConfirm = (newDate) => {
     hideDatePicker();
-    let newData = { ...newWishlistData };
+    let newData = { ...editWishlistData };
     newData["date"] = newDate;
-    setWishlistData(newData);
+    setEditWishlistData(newData);
+    updateWishlist(newData);
+  };
+
+  const updateWishlist = (newData = editWishlistData) => {
+    updateWishlistData(newData);
   };
 
   const Price = ({ price }) => {
@@ -103,7 +195,6 @@ export default function CreateWishlist() {
       </IconButton>
     );
   };
-  console.log(newWishlistData);
   return (
     <>
       <ThemeAppbar
@@ -117,8 +208,9 @@ export default function CreateWishlist() {
             <TextInput
               variant="flat"
               onChangeText={(v) => handleInput("title", v)}
-              value={newWishlistData.title}
+              value={editWishlistData.title}
               label="Title"
+              onBlur={() => updateWishlist()}
             />
           </View>
           <Divider />
@@ -127,21 +219,22 @@ export default function CreateWishlist() {
               <TextInput
                 variant="flat"
                 //onChangeText={(v) => handleInput("type", v)}
-                value={newWishlistData.type}
+                value={editWishlistData.type}
                 label="List Type"
                 editable={false}
               />
             </TouchableOpacity>
           </View>
           <Divider />
+
           <View style={styles.inputRow}>
             <TouchableOpacity onPress={showDatePicker}>
               <TextInput
                 variant="flat"
                 //onChangeText={(v) => handleInput("date", v)}
                 value={
-                  newWishlistData.date
-                    ? format(newWishlistData.date, "dd/MM/yyyy")
+                  editWishlistData.date
+                    ? format(editWishlistData.date, "dd/MM/yyyy")
                     : ""
                 }
                 label="Event Date"
@@ -152,17 +245,20 @@ export default function CreateWishlist() {
                 mode="date"
                 onConfirm={handleDateConfirm}
                 onCancel={hideDatePicker}
-                date={newWishlistData.date || new Date()}
+                date={editWishlistData.date || new Date()}
               />
             </TouchableOpacity>
           </View>
+
           <Divider />
           <View style={styles.inputRow}>
             <TextInput
               variant="flat"
+              multiline
               onChangeText={(v) => handleInput("description", v)}
-              value={newWishlistData.description}
+              value={editWishlistData.description}
               label="Description"
+              onBlur={() => updateWishlist()}
             />
           </View>
           <Divider />
@@ -180,15 +276,15 @@ export default function CreateWishlist() {
               <Text variant="titleMedium">Items</Text>
               <Button
                 icon="plus-thick"
-                onPress={() => console.log("click")}
+                onPress={showNewItemModal}
                 mode="contained"
               >
                 Add Item
               </Button>
             </View>
 
-            {newWishlistItems.length > 0 &&
-              newWishlistItems.map((item, index) => {
+            {aciveWishlistItems.length > 0 &&
+              aciveWishlistItems.map((item, index) => {
                 return (
                   <>
                     {index > 0 && <Divider />}
@@ -241,6 +337,70 @@ export default function CreateWishlist() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+      <Portal>
+        <Modal
+          visible={itemModalVisible}
+          onDismiss={hideNewItemModal}
+          contentContainerStyle={{ padding: 24 }}
+        >
+          <View style={{ backgroundColor: "white", padding: 16, gap: 16 }}>
+            <Text>New Item</Text>
+            <View style={styles.itemInputRow}>
+              <TextInput
+                variant="flat"
+                onChangeText={(v) => handleNewItemInput("title", v)}
+                value={newWishlistItemData.title || ""}
+                label={`Title ${newWishlistItemDataError ? "*required" : ""}`}
+                error={newWishlistItemDataError}
+              />
+            </View>
+            <View style={styles.itemInputRow}>
+              <TextInput
+                variant="flat"
+                multiline
+                onChangeText={(v) => handleNewItemInput("description", v)}
+                value={newWishlistItemData.description || ""}
+                label="Description"
+              />
+            </View>
+            <View style={styles.itemInputRow}>
+              <TextInput
+                variant="flat"
+                onChangeText={(v) => handleNewItemInput("url", v)}
+                value={newWishlistItemData.url || ""}
+                label="URL"
+              />
+            </View>
+            <View style={styles.itemInputRow}>
+              <TextInput
+                variant="flat"
+                onChangeText={(v) => handleNewItemInput("price", v)}
+                value={newWishlistItemData.price || ""}
+                label="Approximate Price"
+                left={<TextInput.Affix text="$" />}
+              />
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 16,
+                justifyContent: "flex-end",
+              }}
+            >
+              <Button
+                buttonColor={theme.colors.tertiary}
+                onPress={hideNewItemModal}
+                mode="contained"
+              >
+                Cancel
+              </Button>
+              <Button onPress={() => saveNewWishlistItem()} mode="contained">
+                Save Item
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      </Portal>
     </>
   );
 }
@@ -252,5 +412,8 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     flexDirection: "column",
+  },
+  itemInputRow: {
+    width: "100%",
   },
 });

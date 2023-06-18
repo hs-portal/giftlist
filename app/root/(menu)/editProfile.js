@@ -4,36 +4,33 @@ import { TextInput, Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useRouter } from "expo-router";
-import { useAuth } from "../../../providers/AuthProvider";
-import { useUserData } from "../../../providers/UserDataProvider";
+import { useUser } from "@realm/react";
+import { useData } from "../../../providers/DataProvider";
 
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import Logout from "../../../components/Logout";
 
 export default function Browse() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { profileData, updateProfileData, closeRealm } = useUserData();
+  const user = useUser();
 
-  //console.log("ProfileData: ", profileData, "userID: ", user.id);
+  const { updateProfileData } = useData();
+
+  let profileData = user.customData;
+
   const [currentProfileData, setCurrentProfileData] = useState({});
   const [fName, setFName] = useState("");
   const [lName, setLName] = useState("");
 
   useEffect(() => {
-    /*
-    let updatedProfileData = profileData.find(function (pd) {
-      return pd._partition == user.id;
-    });
-    */
-    console.log(profileData);
-    setCurrentProfileData(profileData);
-    setFName(profileData.firstName);
-    setLName(profileData.lastName);
-  }, [profileData]);
+    if (profileData !== currentProfileData) {
+      setCurrentProfileData(profileData);
+      setFName(profileData.firstName);
+      setLName(profileData.lastName);
+    }
+  }, [user]);
 
   const handleProfileUpdate = (oldData, firstName, lastName) => {
-    //console.log(oldData.contacts);
     updateProfileData(
       oldData._id,
       firstName,
@@ -72,7 +69,7 @@ export default function Browse() {
         >
           Save
         </Button>
-        <Logout closeRealm={closeRealm} />
+        <Logout />
       </SafeAreaView>
     </>
   );
