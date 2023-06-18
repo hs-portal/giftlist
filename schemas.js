@@ -25,15 +25,7 @@ class ProfileData {
 }
 
 class Wishlist {
-  constructor({
-    title,
-    type,
-    complete,
-    date,
-    description,
-    partition,
-    id = new ObjectId(),
-  }) {
+  constructor({ title, type, complete, date, description, partition, id }) {
     this._partition = partition;
     this._id = id;
     this.title = title;
@@ -94,31 +86,5 @@ class WishlistItem {
     primaryKey: "_id",
   };
 }
-/*
-class WishlistItemComment {
-  constructor({ text, date, wishlistitem, partition, id = new ObjectId() }) {
-    this._partition = partition;
-    this._id = id;
-    this.text = text;
-    this.date = date;
-    this.wishlistitem = wishlistitem;
-  }
 
-  static schema = {
-    name: "WishlistItemComment",
-    properties: {
-      _id: "objectId",
-      _partition: "string",
-      text: "string",
-      date: "date",
-      wishlistitem: {
-        type: "linkingObjects",
-        objectType: "WishlistItem",
-        property: "comments",
-      },
-    },
-    primaryKey: "_id",
-  };
-}
-*/
 export { ProfileData, Wishlist, WishlistItem };

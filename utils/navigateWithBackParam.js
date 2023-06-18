@@ -9,7 +9,7 @@ export default navigateWithBackParam = ({
   let currentRouteName = navState.routes[currentIndex].key;
 
   router.push({
-    pathname: route,
+    pathname: route || "/root",
     params: { prevScreen: currentRouteName, ...extraParams },
   });
 };

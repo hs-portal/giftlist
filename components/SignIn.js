@@ -1,32 +1,68 @@
 import React, { useState, useEffect } from "react";
+import Realm from "realm";
 import { StyleSheet, ScrollView, View, Alert } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useApp } from "@realm/react";
 
-import { useAuth } from "../../providers/AuthProvider";
 import { useRouter } from "expo-router";
+
+import { makeRedirectUri } from "expo-auth-session";
+import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignIn() {
+  const app = useApp();
   const router = useRouter();
   const theme = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { user, signUp, signIn, request, promptAsync } = useAuth();
 
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId:
+      "634509221384-8ebojs8orh0lou3ogclhm4947k8ca4n5.apps.googleusercontent.com",
+    redirectUri: makeRedirectUri({
+      scheme: "com.hotsource.giftlist",
+    }),
+  });
+
+  // Handle Google Sign In Response
   useEffect(() => {
-    // If there is a user logged in, go to the root directory.
-    if (user != null) {
-      console.log(user);
-      router.replace("/");
+    if (response?.type === "success") {
+      // console.log("idtoken:", response.authentication.idToken);
+      let accessToken = response.authentication.accessToken;
+      let idToken = response.authentication.idToken;
+      getUserInfo(accessToken, idToken);
     }
-  }, [user]);
+  }, [response]);
 
-  // The onPressSignIn method calls AuthProvider.signIn with the
-  // email/password in state.
+  const getUserInfo = async (accessToken, idToken) => {
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/userinfo/v2/me",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      const googleUser = await response.json();
+      // do something with userdata, ie: setUserInfo(googleUser);
+      const credential = Realm.Credentials.jwt(idToken);
+      const user = await app.logIn(credential);
+      console.log("signed in as Realm user", user.id);
+    } catch (error) {
+      console.log("error: ", error);
+    }
+  };
+
+  const signIn = async (email, password) => {
+    const creds = Realm.Credentials.emailPassword(email, password);
+    const newUser = await app.logIn(creds);
+  };
+
   const onPressSignIn = async () => {
     console.log("Trying sign in with user: " + email);
     try {
@@ -34,12 +70,14 @@ export default function SignIn() {
     } catch (error) {
       const errorMessage = `Failed to sign in: ${error.message}`;
       console.error(errorMessage);
-      Alert.alert(errorMessage);
+      //Alert.alert(errorMessage);
     }
   };
 
-  // The onPressSignUp method calls AuthProvider.signUp with the
-  // email/password in state and then signs in.
+  const signUp = async (email, password) => {
+    await app.emailPasswordAuth.registerUser({ email, password });
+  };
+
   const onPressSignUp = async () => {
     console.log("Trying signup with user: " + email);
     try {
@@ -48,7 +86,7 @@ export default function SignIn() {
     } catch (error) {
       const errorMessage = `Failed to sign up: ${error.message}`;
       console.error(errorMessage);
-      Alert.alert(errorMessage);
+      //Alert.alert(errorMessage);
     }
   };
   return (

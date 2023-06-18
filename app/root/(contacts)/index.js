@@ -14,15 +14,13 @@ import {
 
 import { useRouter } from "expo-router";
 import { contacts } from "../../../dummyData";
-import { useUserData } from "../../../providers/UserDataProvider";
+import { useData } from "../../../providers/DataProvider";
 import { ScrollView } from "react-native-gesture-handler";
 
 export default function Contacts() {
   const router = useRouter();
   const theme = useTheme();
-  const { userContacts } = useUserData();
-
-  //console.log("userContacts:", userContacts);
+  const { userContacts } = useData();
 
   const [contactEmail, setContactEmail] = useState("");
   const [inviteDialogueVisible, setInviteDialogueVisible] = useState(false);

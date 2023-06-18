@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { Button, useTheme, Dialog, Portal, Text } from "react-native-paper";
 
-import { useAuth } from "../providers/AuthProvider";
 import { useRouter } from "expo-router";
+import { useUser } from "@realm/react";
+import { useData } from "../providers/DataProvider";
 
-export default function Logout({ closeRealm }) {
+export default function Logout() {
+  const user = useUser();
   const router = useRouter();
   const theme = useTheme();
+  const { realm } = useData();
 
   const [visible, setVisible] = useState(false);
 
@@ -14,13 +17,15 @@ export default function Logout({ closeRealm }) {
 
   const hideDialog = () => setVisible(false);
 
-  const { signOut } = useAuth();
-
   const handleLogout = () => {
     hideDialog();
     router.push("/");
-    closeRealm();
-    signOut();
+    realm.close();
+    if (user == null) {
+      console.warn("Not logged in, can't log out!");
+    } else {
+      user.logOut();
+    }
   };
 
   return (
