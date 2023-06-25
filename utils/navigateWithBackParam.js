@@ -10,6 +10,6 @@ export default navigateWithBackParam = ({
 
   router.push({
     pathname: route || "/root",
-    params: { prevScreen: currentRouteName, ...extraParams },
+    params: { prevScreen: currentRouteName || "home", ...extraParams },
   });
 };

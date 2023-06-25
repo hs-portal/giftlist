@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  ActivityIndicator,
+  Avatar,
   Button,
   List,
   Text,
@@ -9,24 +11,43 @@ import {
   Divider,
   useTheme,
   Modal,
+  Dialog,
   Portal,
   TextInput,
+  Snackbar,
+  IconButton,
 } from "react-native-paper";
 import { format } from "date-fns";
 
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ScrollView } from "react-native-gesture-handler";
+import {
+  ScrollView,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import Swipeable from "react-native-gesture-handler/Swipeable";
+import { useUser } from "@realm/react";
+
 import { useData } from "../../../providers/DataProvider";
 
 export default function ViewWishlist() {
   const router = useRouter();
   const theme = useTheme();
+  const user = useUser();
   const { wishlistID } = useLocalSearchParams();
-  const { wishlists, wishlistItems, createWishlistItem } = useData();
+  const {
+    userContacts,
+    wishlists,
+    wishlistItems,
+    updateWishlistData,
+    createWishlistItem,
+    cancelWishlistItem,
+  } = useData();
+
+  let profileData = user.customData;
 
   const [activeWishlist, setActiveWishlist] = useState({});
-  const [aciveWishlistItems, setActiveWishlistItems] = useState([]);
+  const [activeWishlistItems, setActiveWishlistItems] = useState([]);
 
   const [itemExpanded, setItemExpanded] = useState();
   const [itemModalVisible, setItemModalVisible] = useState(false);
@@ -40,6 +61,20 @@ export default function ViewWishlist() {
   const [newWishlistItemDataError, setNewWishlistItemDataError] =
     useState(false);
 
+  const [cancelDialogueVisible, setCancelDialogueVisible] = useState(false);
+  const [cancelItemIndex, setCancelItemIndex] = useState(0);
+  const [cancelItemTitle, setCancelItemTitle] = useState("");
+
+  const [snackVisible, setSnackVisible] = useState(false);
+  const [snackMessage, setSnackMessage] = useState("");
+
+  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [invitedContacts, setInvitedContacts] = useState([]);
+  const [otherContacts, setOtherContacts] = useState([]);
+
+  const [loadingContactData, setLoadingContactData] = useState({});
+  const [loadingContactIndex, setLoadingContactIndex] = useState("");
+
   useEffect(() => {
     let currWishlist = wishlists.find((wl) => {
       if (wl._id.toString() == wishlistID) {
@@ -47,7 +82,18 @@ export default function ViewWishlist() {
       }
     });
 
-    setActiveWishlist(currWishlist);
+    let currWishlistData = {
+      title: currWishlist.title || "",
+      type: currWishlist.type || "Personal List",
+      complete: currWishlist.complete || false,
+      date: currWishlist.date || new Date(),
+      description: currWishlist.description || "",
+      contacts: currWishlist.contacts || [],
+      _partition: currWishlist._partition || user.id,
+      _id: currWishlist._id,
+    };
+
+    setActiveWishlist(currWishlistData);
   }, [wishlists]);
 
   useEffect(() => {
@@ -101,12 +147,21 @@ export default function ViewWishlist() {
     newItemData.wishlist = activeWishlist._id;
     createWishlistItem(newItemData);
     hideNewItemModal();
+    triggerSnackBar("New wishlist item created!");
   };
 
-  const Price = ({ type, purchased, price }) => {
+  const Price = ({ type, cancelled, purchased, price }) => {
     let displaySubtext = true;
     let priceText = price;
     let showIcon = false;
+    let icon = "progress-check";
+
+    if (cancelled) {
+      displaySubtext = false;
+      priceText = "Cancelled";
+      showIcon = true;
+      icon = "cancel";
+    }
 
     if (type !== "Personal List") {
       if (purchased) {
@@ -119,11 +174,23 @@ export default function ViewWishlist() {
     return (
       <View style={{ flexDirection: "column", justifyContent: "center" }}>
         <Chip
-          style={{ backgroundColor: theme.colors.surfaceVariant }}
-          textStyle={{ fontSize: 12, color: theme.colors.primary }}
+          style={{
+            backgroundColor: cancelled
+              ? "#e3caca"
+              : theme.colors.surfaceVariant,
+          }}
+          textStyle={{
+            fontSize: 12,
+            color: cancelled ? theme.colors.error : theme.colors.primary,
+          }}
           compact
           mode="flat"
-          icon={showIcon ? "progress-check" : ""}
+          icon={showIcon ? icon : ""}
+          theme={{
+            colors: {
+              primary: cancelled ? theme.colors.error : theme.colors.primary,
+            },
+          }}
         >
           {priceText}
         </Chip>
@@ -131,6 +198,144 @@ export default function ViewWishlist() {
       </View>
     );
   };
+
+  const swipeableRefs = [];
+
+  const renderRightActions = (progress, dragX) => {
+    return (
+      <View
+        style={{
+          padding: 8,
+          height: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f4e7e7",
+        }}
+      >
+        <Chip
+          style={{
+            backgroundColor: "#f4e7e7",
+            height: 40,
+          }}
+          theme={{ colors: { primary: theme.colors.error } }}
+          textStyle={{ fontSize: 12, color: theme.colors.error }}
+          compact
+          mode="flat"
+          icon={"cancel"}
+        >
+          Mark item as Cancelled
+        </Chip>
+      </View>
+    );
+  };
+
+  const triggerCancel = (item, index) => {
+    let title = "";
+    if (item.title) {
+      title = item.title;
+    }
+    setCancelItemIndex(index);
+    setCancelItemTitle(title);
+    setCancelDialogueVisible(true);
+  };
+
+  const confirmCancel = () => {
+    swipeableRefs[cancelItemIndex].close();
+    setCancelDialogueVisible(false);
+    cancelWishlistItem(activeWishlistItems[cancelItemIndex]);
+    triggerSnackBar("Item cancelled!");
+  };
+
+  const cancelCancel = () => {
+    swipeableRefs[cancelItemIndex].close();
+    setCancelDialogueVisible(false);
+  };
+
+  const triggerSnackBar = (message) => {
+    setSnackMessage(message);
+    setSnackVisible(true);
+  };
+
+  const onDismissSnackBar = () => {
+    setSnackMessage("");
+    setSnackVisible(false);
+  };
+
+  const showContactsModal = () => setContactsModalVisible(true);
+  const hideContactsModal = () => {
+    setContactsModalVisible(false);
+  };
+
+  const UserIcon = ({ contact }) => {
+    var firstInitial = Array.from(contact.firstName)[0];
+    var lastInitial = Array.from(contact.lastName)[0];
+
+    return (
+      <View
+        style={{
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Avatar.Text
+          style={{ backgroundColor: contact.avatarColor }}
+          size={32}
+          label={`${firstInitial}${lastInitial}`}
+        />
+      </View>
+    );
+  };
+
+  useEffect(() => {
+    if (activeWishlist.contacts && userContacts) {
+      //console.log(activeWishlist.contacts, userContacts);
+      let filteredUserContactsInvited = userContacts.filter((contact) => {
+        //console.log(activeWishlist.contacts, contact);
+        return activeWishlist.contacts.indexOf(contact._partition) >= 0;
+      });
+      let filteredUserContactsOther = userContacts.filter(
+        (contact) => activeWishlist.contacts.indexOf(contact._partition) == -1
+      );
+      setInvitedContacts(filteredUserContactsInvited);
+      setOtherContacts(filteredUserContactsOther);
+    }
+  }, [activeWishlist, userContacts]);
+
+  const handleInviteContact = (index, type, contact) => {
+    setLoadingContactIndex(`${type}-${index}`);
+    setLoadingContactData({ type: type, contact: contact });
+  };
+  useEffect(() => {
+    if (Object.keys(loadingContactData).length > 0) {
+      let { type, contact } = loadingContactData;
+      const updateWishlistContacts = async () => {
+        let updatedWishlistData = { ...activeWishlist };
+        let updatedContactList = [...updatedWishlistData.contacts];
+
+        if (type == "add") {
+          updatedContactList.push(contact);
+        } else if (type == "remove") {
+          let removeIndex = updatedContactList.indexOf(contact);
+          updatedContactList.splice(removeIndex, 1);
+        }
+        updatedWishlistData.contacts = updatedContactList;
+
+        const updateWishlistCall = await updateWishlistData(
+          updatedWishlistData
+        );
+        if (updateWishlistCall == "complete") {
+          setLoadingContactData({});
+        }
+      };
+      updateWishlistContacts();
+    }
+  }, [loadingContactData]);
+
+  useEffect(() => {
+    setLoadingContactIndex("");
+  }, [invitedContacts]);
 
   return (
     <>
@@ -146,6 +351,20 @@ export default function ViewWishlist() {
             <Text>Event Date:</Text>
             <Chip>
               {format(activeWishlist.date || new Date(), "dd/MM/yyyy")}
+            </Chip>
+          </View>
+          <Divider />
+          <View style={styles.infoRow}>
+            <Text>Invited Contacts:</Text>
+            <Chip
+              mode="outlined"
+              icon="account-search-outline"
+              onPress={showContactsModal}
+            >
+              {(activeWishlist.contacts && activeWishlist.contacts.length) || 0}{" "}
+              {(activeWishlist.contacts && activeWishlist.contacts.length == 1
+                ? "Contact"
+                : "Contacts") || "Contacts"}
             </Chip>
           </View>
           <Divider />
@@ -177,43 +396,62 @@ export default function ViewWishlist() {
               </Button>
             </View>
 
-            {aciveWishlistItems.map((item, index) => {
+            {activeWishlistItems.map((item, index) => {
               return (
-                <>
+                <GestureHandlerRootView
+                  key={`item-${index}`}
+                  style={{ flex: 1 }}
+                >
                   {index > 0 && <Divider />}
-
-                  <List.Accordion
-                    key={`item-${index}`}
-                    style={
-                      activeWishlist.type === "Personal List"
-                        ? {}
-                        : {
-                            backgroundColor: item.purchased ? "#e7f4e8" : "",
-                          }
+                  <Swipeable
+                    ref={(ref) => (swipeableRefs[index] = ref)}
+                    onSwipeableOpen={() => triggerCancel(item, index)}
+                    renderRightActions={() =>
+                      !item.purchased && !item.cancelled && renderRightActions()
                     }
-                    onPress={() =>
-                      setItemExpanded(itemExpanded == index ? null : index)
-                    }
-                    expanded={itemExpanded == index}
-                    title={item.title}
-                    left={(props) => (
-                      <List.Icon {...props} icon="gift-outline" />
-                    )}
-                    right={() => (
-                      <Price
-                        type={activeWishlist.type}
-                        purchased={item.purchased}
-                        price={item.price}
-                      />
-                    )}
                   >
-                    <List.Item
-                      title="Description"
-                      description={item.description}
-                    />
-                    <List.Item title="URL" description={item.url} />
-                  </List.Accordion>
-                </>
+                    <List.Accordion
+                      style={
+                        activeWishlist.type === "Personal List"
+                          ? {
+                              backgroundColor: item.cancelled ? "#f4e7e7" : "",
+                            }
+                          : {
+                              backgroundColor: item.purchased
+                                ? "#e7f4e8"
+                                : item.cancelled
+                                ? "#f4e7e7"
+                                : "",
+                            }
+                      }
+                      onPress={() =>
+                        setItemExpanded(itemExpanded == index ? null : index)
+                      }
+                      expanded={itemExpanded == index}
+                      title={item.title}
+                      left={(props) => (
+                        <List.Icon {...props} icon="gift-outline" />
+                      )}
+                      right={() => (
+                        <Price
+                          type={activeWishlist.type}
+                          cancelled={item.cancelled}
+                          purchased={item.purchased}
+                          price={item.price}
+                        />
+                      )}
+                    >
+                      <View style={{ backgroundColor: "white" }}>
+                        <Divider />
+                        <List.Item
+                          title="Description"
+                          description={item.description}
+                        />
+                        <List.Item title="URL" description={item.url} />
+                      </View>
+                    </List.Accordion>
+                  </Swipeable>
+                </GestureHandlerRootView>
               );
             })}
           </List.Section>
@@ -283,6 +521,102 @@ export default function ViewWishlist() {
           </View>
         </Modal>
       </Portal>
+      <Portal>
+        <Dialog visible={cancelDialogueVisible} onDismiss={cancelCancel}>
+          <Dialog.Title>Cancel Item</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              Mark {cancelItemTitle || "Item"} as cancelled?
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => cancelCancel()}>Cancel</Button>
+            <Button onPress={() => confirmCancel()}>Confirm</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+      <Portal>
+        <Modal
+          visible={contactsModalVisible}
+          onDismiss={hideContactsModal}
+          style={{ maxHeight: "90%", alignSelf: "center" }}
+          contentContainerStyle={{ padding: 24 }}
+        >
+          <ScrollView>
+            <View style={{ backgroundColor: "white", padding: 16, gap: 16 }}>
+              <List.Section title="Invited">
+                {invitedContacts.map((contact, index) => {
+                  return (
+                    <List.Item
+                      key={index}
+                      style={{ alignItems: "center" }}
+                      title={`${contact.firstName} ${contact.lastName}`}
+                      //description={`${contact.firstName} ${contact.lastName}`}
+                      left={() => <UserIcon contact={contact} />}
+                      right={() =>
+                        loadingContactIndex == `remove-${index}` ? (
+                          <ActivityIndicator animating={true} />
+                        ) : (
+                          <IconButton
+                            mode="contained-tonal"
+                            size={24}
+                            icon="account-remove"
+                            onPress={() =>
+                              handleInviteContact(
+                                index,
+                                "remove",
+                                contact._partition
+                              )
+                            }
+                          />
+                        )
+                      }
+                    />
+                  );
+                })}
+              </List.Section>
+              <List.Section title="Other Contacts">
+                {otherContacts.map((contact, index) => {
+                  return (
+                    <List.Item
+                      key={index}
+                      style={{ alignItems: "center" }}
+                      title={`${contact.firstName} ${contact.lastName}`}
+                      //description={`${contact.firstName} ${contact.lastName}`}
+                      left={() => <UserIcon contact={contact} />}
+                      right={() =>
+                        loadingContactIndex == `add-${index}` ? (
+                          <ActivityIndicator animating={true} />
+                        ) : (
+                          <IconButton
+                            mode="contained-tonal"
+                            size={24}
+                            icon="account-plus"
+                            onPress={() =>
+                              handleInviteContact(
+                                index,
+                                "add",
+                                contact._partition
+                              )
+                            }
+                          />
+                        )
+                      }
+                    />
+                  );
+                })}
+              </List.Section>
+            </View>
+          </ScrollView>
+        </Modal>
+      </Portal>
+      <Snackbar
+        visible={snackVisible}
+        duration={3000}
+        onDismiss={onDismissSnackBar}
+      >
+        {snackMessage}
+      </Snackbar>
     </>
   );
 }
@@ -298,5 +632,12 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     width: "100%",
+  },
+  rightAction: {
+    alignItems: "center",
+    flexDirection: "row-reverse",
+    backgroundColor: "#e7f4e8",
+    flex: 1,
+    justifyContent: "flex-end",
   },
 });

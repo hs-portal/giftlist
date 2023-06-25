@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -8,34 +8,34 @@ import {
   Divider,
   Avatar,
   useTheme,
+  SegmentedButtons,
 } from "react-native-paper";
-
+import { format } from "date-fns";
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import { useRouter, useNavigation } from "expo-router";
-import { contacts, sharedWishlists } from "../../../dummyData";
 import navigateWithBackParam from "../../../utils/navigateWithBackParam";
+import { useData } from "../../../providers/DataProvider";
 
 export default function Browse() {
   const router = useRouter();
   const navigation = useNavigation();
   const theme = useTheme();
 
-  const [drawerActive, setDrawerActive] = useState("");
+  const { sharedWishlists, userContacts } = useData();
 
-  var wishlists = [...sharedWishlists];
-  var wishlistContacts = [...contacts];
+  const [sharedWishlistData, setSharedWishlistData] = useState([]);
+  const [filterValue, setFilterValue] = useState("date");
 
-  const ListDescription = ({ contact, type, items }) => {
-    let purchasedArray = items.filter((item) => {
-      return item.purchased;
-    });
+  useEffect(() => {
+    let sortedWishlistData = sharedWishlists.sorted(filterValue);
+    setSharedWishlistData(sortedWishlistData);
+  }, [sharedWishlists, filterValue]);
+
+  const ListDescription = ({ contact }) => {
     return (
       <View style={styles.descriptionText}>
-        <Text variant="labelMedium">
-          {contact.firstName}'s {type}
-        </Text>
         <Text variant="labelLarge">
-          {purchasedArray.length}/{items.length} Items Purchased
+          {contact.firstName} {contact.lastName}
         </Text>
       </View>
     );
@@ -48,7 +48,7 @@ export default function Browse() {
     return (
       <Avatar.Text
         style={{
-          backgroundColor: theme.colors[contact.color],
+          backgroundColor: contact.avatarColor,
           alignSelf: "center",
         }}
         size={36}
@@ -77,39 +77,66 @@ export default function Browse() {
     <>
       <ThemeAppbar hasDefaultAction title="Browse" />
       <SafeAreaView>
+        <View style={{ paddingHorizontal: 16 }}>
+          <Text style={{ paddingBottom: 8 }}>Sort by:</Text>
+          <SegmentedButtons
+            value={filterValue}
+            onValueChange={setFilterValue}
+            density="medium"
+            buttons={[
+              {
+                icon: "calendar-range",
+                value: "date",
+                label: "Event Date",
+                onPress: (v) => setFilterValue(v),
+              },
+              {
+                icon: "account",
+                value: "_partition",
+                label: "Contact",
+                onPress: (v) => setFilterValue(v),
+              },
+              {
+                icon: "format-letter-case",
+                value: "title",
+                label: "Title",
+                onPress: (v) => setFilterValue(v),
+              },
+            ]}
+          />
+        </View>
         <List.Section>
-          {wishlists.map((wishlist, index) => {
-            let contact = wishlistContacts.find(
-              (c) => c.email === wishlist.owner
-            );
-            return (
-              <React.Fragment key={`wishlist-${index}`}>
-                {index > 0 && <Divider />}
-                <List.Item
-                  onPress={() =>
-                    navigateWithBackParam({
-                      router,
-                      navigation,
-                      route: "/root/(browse)/viewWishlist",
-                      extraParams: { wishlistID: index },
-                    })
-                  }
-                  style={{ paddingLeft: 8 }}
-                  title={wishlist.title}
-                  description={(props) => (
-                    <ListDescription
-                      {...props}
-                      contact={contact}
-                      type={wishlist.type}
-                      items={wishlist.items}
-                    />
-                  )}
-                  left={() => <UserIcon contact={contact} />}
-                  right={() => <DueDate date={wishlist.date} />}
-                />
-              </React.Fragment>
-            );
-          })}
+          {sharedWishlistData &&
+            sharedWishlistData.length > 0 &&
+            sharedWishlistData.map((wishlist, index) => {
+              let contact = userContacts.find(
+                (c) => c._partition === wishlist._partition
+              );
+              return (
+                <React.Fragment key={`wishlist-${index}`}>
+                  {index > 0 && <Divider />}
+                  <List.Item
+                    onPress={() =>
+                      navigateWithBackParam({
+                        router,
+                        navigation,
+                        route: "/root/(browse)/viewWishlist",
+                        extraParams: { wishlistID: wishlist._id },
+                      })
+                    }
+                    style={{ paddingLeft: 8 }}
+                    title={wishlist.title}
+                    description={(props) => (
+                      <ListDescription {...props} contact={contact} />
+                    )}
+                    left={() => <UserIcon contact={contact} />}
+                    right={() => (
+                      <DueDate date={format(wishlist.date, "dd/MM/yyyy")} />
+                    )}
+                  />
+                </React.Fragment>
+              );
+            })}
         </List.Section>
       </SafeAreaView>
     </>

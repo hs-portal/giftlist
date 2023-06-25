@@ -2,17 +2,20 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  ActivityIndicator,
+  Avatar,
   Button,
   List,
   Text,
-  TextInput,
   Chip,
   Divider,
   useTheme,
-  IconButton,
-  Dialog,
   Modal,
+  Dialog,
   Portal,
+  TextInput,
+  Snackbar,
+  IconButton,
   RadioButton,
 } from "react-native-paper";
 import { format } from "date-fns";
@@ -21,7 +24,12 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ScrollView } from "react-native-gesture-handler";
+import {
+  ScrollView,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import Swipeable from "react-native-gesture-handler/Swipeable";
+
 import { useData } from "../../../providers/DataProvider";
 import { useUser } from "@realm/react";
 
@@ -30,10 +38,16 @@ export default function CreateWishlist() {
   const theme = useTheme();
   const user = useUser();
   const { wishlistID } = useLocalSearchParams();
-  const { wishlists, updateWishlistData, wishlistItems, createWishlistItem } =
-    useData();
+  const {
+    userContacts,
+    wishlists,
+    updateWishlistData,
+    wishlistItems,
+    createWishlistItem,
+    removeWishlistItem,
+  } = useData();
 
-  const [aciveWishlistItems, setActiveWishlistItems] = useState([]);
+  const [activeWishlistItems, setActiveWishlistItems] = useState([]);
 
   const [itemExpanded, setItemExpanded] = useState();
   const [itemModalVisible, setItemModalVisible] = useState(false);
@@ -52,6 +66,21 @@ export default function CreateWishlist() {
   const [typeDialogueVisible, setTypeDialogueVisible] = useState(false);
   const [typeChecked, setTypeChecked] = useState("Personal List");
 
+  const [removeItemDialogueVisible, setRemoveItemDialogueVisible] =
+    useState(false);
+  const [removeItemIndex, setRemoveItemIndex] = useState(0);
+  const [removeItemTitle, setRemoveItemTitle] = useState("");
+
+  const [snackVisible, setSnackVisible] = useState(false);
+  const [snackMessage, setSnackMessage] = useState("");
+
+  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [invitedContacts, setInvitedContacts] = useState([]);
+  const [otherContacts, setOtherContacts] = useState([]);
+
+  const [loadingContactData, setLoadingContactData] = useState({});
+  const [loadingContactIndex, setLoadingContactIndex] = useState("");
+
   useEffect(() => {
     let currWishlist = wishlists.find((wl) => {
       if (wl._id.toString() == wishlistID) {
@@ -65,10 +94,11 @@ export default function CreateWishlist() {
       complete: currWishlist.complete || false,
       date: currWishlist.date || new Date(),
       description: currWishlist.description || "",
+      contacts: currWishlist.contacts || [],
       _partition: currWishlist._partition || user.id,
       _id: currWishlist._id,
     };
-    console.log("testData", currWishlistData);
+
     setEditWishlistData(currWishlistData);
   }, [wishlists]);
 
@@ -123,6 +153,7 @@ export default function CreateWishlist() {
     newItemData.wishlist = editWishlistData._id;
     createWishlistItem(newItemData);
     hideNewItemModal();
+    triggerSnackBar("New wishlist item created!");
   };
 
   const showTypeDialog = () => setTypeDialogueVisible(true);
@@ -195,11 +226,161 @@ export default function CreateWishlist() {
       </IconButton>
     );
   };
+
+  const swipeableRefs = [];
+
+  const renderRightActions = (progress, dragX) => {
+    return (
+      <View
+        style={{
+          padding: 8,
+          height: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f4e7e7",
+        }}
+      >
+        <Chip
+          style={{
+            backgroundColor: "#f4e7e7",
+            height: 40,
+          }}
+          theme={{ colors: { primary: theme.colors.error } }}
+          textStyle={{ fontSize: 12, color: theme.colors.error }}
+          compact
+          mode="flat"
+          icon={"cancel"}
+        >
+          Remove Item
+        </Chip>
+      </View>
+    );
+  };
+
+  const triggerRemoveAction = (item, index) => {
+    let title = "";
+    if (item.title) {
+      title = item.title;
+    }
+    setRemoveItemIndex(index);
+    setRemoveItemTitle(title);
+    setRemoveItemDialogueVisible(true);
+  };
+
+  const confirmRemoveItem = async () => {
+    swipeableRefs[removeItemIndex].close();
+    setRemoveItemDialogueVisible(false);
+    const removeWishlistItemCallback = await removeWishlistItem(
+      activeWishlistItems[removeItemIndex]
+    );
+    if (removeWishlistItemCallback == "complete") {
+      let modifiedActiveWishlistItems = [...activeWishlistItems];
+      modifiedActiveWishlistItems.splice(removeItemIndex, 1);
+      setActiveWishlistItems(modifiedActiveWishlistItems);
+      triggerSnackBar("Item removed!");
+    }
+  };
+
+  const cancelRemoveItem = () => {
+    swipeableRefs[removeItemIndex].close();
+    setRemoveItemDialogueVisible(false);
+  };
+
+  const triggerSnackBar = (message) => {
+    setSnackMessage(message);
+    setSnackVisible(true);
+  };
+
+  const onDismissSnackBar = () => {
+    setSnackMessage("");
+    setSnackVisible(false);
+  };
+
+  const showContactsModal = () => setContactsModalVisible(true);
+  const hideContactsModal = () => {
+    setContactsModalVisible(false);
+  };
+
+  const UserIcon = ({ contact }) => {
+    var firstInitial = Array.from(contact.firstName)[0];
+    var lastInitial = Array.from(contact.lastName)[0];
+
+    return (
+      <View
+        style={{
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Avatar.Text
+          style={{ backgroundColor: contact.avatarColor }}
+          size={32}
+          label={`${firstInitial}${lastInitial}`}
+        />
+      </View>
+    );
+  };
+
+  useEffect(() => {
+    if (editWishlistData.contacts && userContacts) {
+      if (
+        invitedContacts.length != editWishlistData.contacts.length ||
+        invitedContacts.length <= 0
+      ) {
+        let filteredUserContactsInvited = userContacts.filter((contact) => {
+          return editWishlistData.contacts.indexOf(contact._partition) >= 0;
+        });
+        let filteredUserContactsOther = userContacts.filter(
+          (contact) =>
+            editWishlistData.contacts.indexOf(contact._partition) == -1
+        );
+        setInvitedContacts(filteredUserContactsInvited);
+        setOtherContacts(filteredUserContactsOther);
+      }
+    }
+  }, [editWishlistData, userContacts]);
+
+  const handleInviteContact = (index, type, contact) => {
+    setLoadingContactIndex(`${type}-${index}`);
+    setLoadingContactData({ type: type, contact: contact });
+  };
+  useEffect(() => {
+    if (Object.keys(loadingContactData).length > 0) {
+      let { type, contact } = loadingContactData;
+      const updateWishlistContacts = async () => {
+        let updatedWishlistData = { ...editWishlistData };
+        let updatedContactList = [...updatedWishlistData.contacts];
+
+        if (type == "add") {
+          updatedContactList.push(contact);
+        } else if (type == "remove") {
+          let removeIndex = updatedContactList.indexOf(contact);
+          updatedContactList.splice(removeIndex, 1);
+        }
+        updatedWishlistData.contacts = updatedContactList;
+
+        const updateWishlistCall = await updateWishlistData(
+          updatedWishlistData
+        );
+        if (updateWishlistCall == "complete") {
+          setLoadingContactData({});
+        }
+      };
+      updateWishlistContacts();
+    }
+  }, [loadingContactData]);
+
+  useEffect(() => {
+    setLoadingContactIndex("");
+  }, [invitedContacts]);
+
   return (
     <>
       <ThemeAppbar
         hasBack
-        title="New Wishlist"
+        title={editWishlistData.title || "View Wishlist"}
         customAction={<SaveWishlist />}
       />
       <ScrollView>
@@ -251,6 +432,23 @@ export default function CreateWishlist() {
           </View>
 
           <Divider />
+          <View style={styles.infoRow}>
+            <Text>Invited Contacts:</Text>
+            <Chip
+              mode="outlined"
+              icon="account-search-outline"
+              onPress={showContactsModal}
+            >
+              {(editWishlistData.contacts &&
+                editWishlistData.contacts.length) ||
+                0}{" "}
+              {(editWishlistData.contacts &&
+              editWishlistData.contacts.length == 1
+                ? "Contact"
+                : "Contacts") || "Contacts"}
+            </Chip>
+          </View>
+          <Divider />
           <View style={styles.inputRow}>
             <TextInput
               variant="flat"
@@ -263,7 +461,7 @@ export default function CreateWishlist() {
           </View>
           <Divider />
 
-          <List.Section /*title="Items"*/>
+          <List.Section>
             <View
               style={{
                 padding: 16,
@@ -283,31 +481,45 @@ export default function CreateWishlist() {
               </Button>
             </View>
 
-            {aciveWishlistItems.length > 0 &&
-              aciveWishlistItems.map((item, index) => {
+            {activeWishlistItems.length > 0 &&
+              activeWishlistItems.map((item, index) => {
+                if (!item.isValid()) {
+                  return null;
+                }
                 return (
-                  <>
+                  <GestureHandlerRootView
+                    key={`item-${index}`}
+                    style={{ flex: 1 }}
+                  >
                     {index > 0 && <Divider />}
-
-                    <List.Accordion
-                      key={`item-${index}`}
-                      onPress={() =>
-                        setItemExpanded(itemExpanded == index ? null : index)
-                      }
-                      expanded={itemExpanded == index}
-                      title={item.title}
-                      left={(props) => (
-                        <List.Icon {...props} icon="gift-outline" />
-                      )}
-                      right={() => <Price price={item.price} />}
+                    <Swipeable
+                      ref={(ref) => (swipeableRefs[index] = ref)}
+                      onSwipeableOpen={() => triggerRemoveAction(item, index)}
+                      renderRightActions={() => renderRightActions()}
                     >
-                      <List.Item
-                        title="Description"
-                        description={item.description}
-                      />
-                      <List.Item title="URL" description={item.url} />
-                    </List.Accordion>
-                  </>
+                      <List.Accordion
+                        key={`item-${index}`}
+                        onPress={() =>
+                          setItemExpanded(itemExpanded == index ? null : index)
+                        }
+                        expanded={itemExpanded == index}
+                        title={item.title}
+                        left={(props) => (
+                          <List.Icon {...props} icon="gift-outline" />
+                        )}
+                        right={() => <Price price={item.price} />}
+                      >
+                        <View style={{ backgroundColor: "white" }}>
+                          <Divider />
+                          <List.Item
+                            title="Description"
+                            description={item.description}
+                          />
+                          <List.Item title="URL" description={item.url} />
+                        </View>{" "}
+                      </List.Accordion>
+                    </Swipeable>
+                  </GestureHandlerRootView>
                 );
               })}
           </List.Section>
@@ -401,6 +613,108 @@ export default function CreateWishlist() {
           </View>
         </Modal>
       </Portal>
+
+      <Portal>
+        <Dialog
+          visible={removeItemDialogueVisible}
+          onDismiss={cancelRemoveItem}
+        >
+          <Dialog.Title>Remove Item</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              Remove {removeItemTitle || "Item"}?
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => cancelRemoveItem()}>Cancel</Button>
+            <Button onPress={() => confirmRemoveItem()}>Confirm</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={contactsModalVisible}
+          onDismiss={hideContactsModal}
+          style={{ maxHeight: "90%", alignSelf: "center" }}
+          contentContainerStyle={{ padding: 24 }}
+        >
+          <ScrollView>
+            <View style={{ backgroundColor: "white", padding: 16, gap: 16 }}>
+              <List.Section title="Invited">
+                {invitedContacts.map((contact, index) => {
+                  return (
+                    <List.Item
+                      key={index}
+                      style={{ alignItems: "center" }}
+                      title={`${contact.firstName} ${contact.lastName}`}
+                      //description={`${contact.firstName} ${contact.lastName}`}
+                      left={() => <UserIcon contact={contact} />}
+                      right={() =>
+                        loadingContactIndex == `remove-${index}` ? (
+                          <ActivityIndicator animating={true} />
+                        ) : (
+                          <IconButton
+                            mode="contained-tonal"
+                            size={24}
+                            icon="account-remove"
+                            onPress={() =>
+                              handleInviteContact(
+                                index,
+                                "remove",
+                                contact._partition
+                              )
+                            }
+                          />
+                        )
+                      }
+                    />
+                  );
+                })}
+              </List.Section>
+              <List.Section title="Other Contacts">
+                {otherContacts.map((contact, index) => {
+                  return (
+                    <List.Item
+                      key={index}
+                      style={{ alignItems: "center" }}
+                      title={`${contact.firstName} ${contact.lastName}`}
+                      //description={`${contact.firstName} ${contact.lastName}`}
+                      left={() => <UserIcon contact={contact} />}
+                      right={() =>
+                        loadingContactIndex == `add-${index}` ? (
+                          <ActivityIndicator animating={true} />
+                        ) : (
+                          <IconButton
+                            mode="contained-tonal"
+                            size={24}
+                            icon="account-plus"
+                            onPress={() =>
+                              handleInviteContact(
+                                index,
+                                "add",
+                                contact._partition
+                              )
+                            }
+                          />
+                        )
+                      }
+                    />
+                  );
+                })}
+              </List.Section>
+            </View>
+          </ScrollView>
+        </Modal>
+      </Portal>
+
+      <Snackbar
+        visible={snackVisible}
+        duration={3000}
+        onDismiss={onDismissSnackBar}
+      >
+        {snackMessage}
+      </Snackbar>
     </>
   );
 }
@@ -415,5 +729,12 @@ const styles = StyleSheet.create({
   },
   itemInputRow: {
     width: "100%",
+  },
+  rightAction: {
+    alignItems: "center",
+    flexDirection: "row-reverse",
+    backgroundColor: "#e7f4e8",
+    flex: 1,
+    justifyContent: "flex-end",
   },
 });

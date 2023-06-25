@@ -13,7 +13,6 @@ import {
 } from "react-native-paper";
 
 import { useRouter } from "expo-router";
-import { contacts } from "../../../dummyData";
 import { useData } from "../../../providers/DataProvider";
 import { ScrollView } from "react-native-gesture-handler";
 
@@ -62,7 +61,7 @@ export default function Contacts() {
                   <List.Item
                     key={index}
                     title={`${contact.firstName} ${contact.lastName}`}
-                    description={`${contact.firstName}${contact.lastName}@email.com`}
+                    //description={`${contact.firstName}${contact.lastName}@email.com`}
                     left={() => <UserIcon contact={contact} />}
                   />
                 );

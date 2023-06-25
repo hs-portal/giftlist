@@ -31,9 +31,11 @@ export default function Logout() {
   return (
     <>
       <Button
-        mode="contained"
+        mode="outlined"
+        compact
         icon="logout"
-        buttonColor={theme.colors.tertiary}
+        style={{ borderColor: "#fff" }}
+        textColor="#fff"
         onPress={showDialog}
       >
         Log Out

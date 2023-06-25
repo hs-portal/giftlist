@@ -11,7 +11,10 @@ import {
   Modal,
   Portal,
   TextInput,
+  Snackbar,
 } from "react-native-paper";
+import { ScrollView } from "react-native-gesture-handler";
+
 import { format } from "date-fns";
 import ThemeAppbar from "../../../components/ThemeAppbar";
 import { useRouter, useNavigation } from "expo-router";
@@ -22,7 +25,14 @@ export default function Home() {
   const router = useRouter();
   const navigation = useNavigation();
   const theme = useTheme();
-  const { createNewWishlist, wishlists, wishlistItems } = useData();
+
+  const {
+    createNewWishlist,
+    wishlists,
+    wishlistItems,
+    snackMessage,
+    setSnackMessage,
+  } = useData();
 
   const [wishListData, setWishListData] = useState([]);
 
@@ -30,6 +40,8 @@ export default function Home() {
 
   const [newWishlistTitle, setNewWishlistTitle] = useState("");
   const [newWishlistError, setNewWishlistError] = useState(false);
+
+  const [snackVisible, setSnackVisible] = useState(false);
 
   useEffect(() => {
     let wishlistsRAW = [...wishlists];
@@ -48,6 +60,12 @@ export default function Home() {
 
     setWishListData(wishlistsRAW);
   }, [wishlists, wishlistItems]);
+
+  useEffect(() => {
+    if (snackMessage !== "") {
+      setSnackVisible(true);
+    }
+  }, [snackMessage]);
 
   const showNewWishlistModal = () => setNewWishlistModalVisible(true);
   const hideNewWishlistModal = () => {
@@ -82,6 +100,11 @@ export default function Home() {
     }
   };
 
+  const onDismissSnackBar = () => {
+    setSnackMessage("");
+    setSnackVisible(false);
+  };
+
   const ListDescription = ({ type, items }) => {
     return (
       <View style={styles.descriptionText}>
@@ -110,51 +133,53 @@ export default function Home() {
   return (
     <>
       <ThemeAppbar hasDefaultAction title="My Wishlists" />
-      <SafeAreaView>
-        <Button
-          mode="contained"
-          style={{ alignSelf: "center" }}
-          icon="playlist-plus"
-          onPress={showNewWishlistModal}
-        >
-          Create Wishlist
-        </Button>
-        <List.Section>
-          {wishlists &&
-            wishlists.length > 0 &&
-            wishListData.map((wishlist, index) => {
-              return (
-                <React.Fragment key={`wishlist-${index}`}>
-                  {index > 0 && <Divider />}
-                  <List.Item
-                    onPress={() =>
-                      navigateWithBackParam({
-                        router,
-                        navigation,
-                        route: "/root/(home)/viewWishlist",
-                        extraParams: { wishlistID: wishlist._id },
-                      })
-                    }
-                    title={wishlist.title}
-                    description={(props) => (
-                      <ListDescription
-                        {...props}
-                        type={wishlist.type}
-                        items={wishlist.items?.length || 0}
-                      />
-                    )}
-                    left={(props) => (
-                      <List.Icon {...props} icon="playlist-check" />
-                    )}
-                    right={() => (
-                      <DueDate date={format(wishlist.date, "dd/MM/yyyy")} />
-                    )}
-                  />
-                </React.Fragment>
-              );
-            })}
-        </List.Section>
-      </SafeAreaView>
+      <ScrollView>
+        <SafeAreaView>
+          <Button
+            mode="contained"
+            style={{ alignSelf: "center" }}
+            icon="playlist-plus"
+            onPress={showNewWishlistModal}
+          >
+            Create Wishlist
+          </Button>
+          <List.Section>
+            {wishlists &&
+              wishlists.length > 0 &&
+              wishListData.map((wishlist, index) => {
+                return (
+                  <React.Fragment key={`wishlist-${index}`}>
+                    {index > 0 && <Divider />}
+                    <List.Item
+                      onPress={() =>
+                        navigateWithBackParam({
+                          router,
+                          navigation,
+                          route: "/root/(home)/viewWishlist",
+                          extraParams: { wishlistID: wishlist._id },
+                        })
+                      }
+                      title={wishlist.title}
+                      description={(props) => (
+                        <ListDescription
+                          {...props}
+                          type={wishlist.type}
+                          items={wishlist.items?.length || 0}
+                        />
+                      )}
+                      left={(props) => (
+                        <List.Icon {...props} icon="playlist-check" />
+                      )}
+                      right={() => (
+                        <DueDate date={format(wishlist.date, "dd/MM/yyyy")} />
+                      )}
+                    />
+                  </React.Fragment>
+                );
+              })}
+          </List.Section>
+        </SafeAreaView>
+      </ScrollView>
       <Portal>
         <Modal
           visible={newWishlistModalVisible}
@@ -193,6 +218,13 @@ export default function Home() {
           </View>
         </Modal>
       </Portal>
+      <Snackbar
+        visible={snackVisible}
+        duration={3000}
+        onDismiss={onDismissSnackBar}
+      >
+        {snackMessage}
+      </Snackbar>
     </>
   );
 }

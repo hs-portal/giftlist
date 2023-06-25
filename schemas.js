@@ -25,7 +25,16 @@ class ProfileData {
 }
 
 class Wishlist {
-  constructor({ title, type, complete, date, description, partition, id }) {
+  constructor({
+    title,
+    type,
+    complete,
+    date,
+    description,
+    contacts,
+    partition,
+    id,
+  }) {
     this._partition = partition;
     this._id = id;
     this.title = title;
@@ -33,6 +42,7 @@ class Wishlist {
     this.complete = complete;
     this.date = date;
     this.description = description;
+    this.contacts = contacts;
   }
 
   static schema = {
@@ -45,6 +55,7 @@ class Wishlist {
       date: "date",
       description: "string",
       complete: "bool",
+      contacts: { type: "list", objectType: "string" },
     },
     primaryKey: "_id",
   };
@@ -56,6 +67,7 @@ class WishlistItem {
     url,
     price,
     description,
+    cancelled,
     purchased,
     wishlist,
     partition,
@@ -66,7 +78,7 @@ class WishlistItem {
     this.title = title;
     this.url = url;
     this.description = description;
-    this.purchased = purchased;
+    (this.cancelled = cancelled), (this.purchased = purchased);
     this.price = price;
     this.wishlist = wishlist;
   }
@@ -79,6 +91,7 @@ class WishlistItem {
       title: "string",
       url: "string",
       description: "string",
+      cancelled: "bool",
       purchased: "bool",
       price: "string",
       wishlist: "objectId",
