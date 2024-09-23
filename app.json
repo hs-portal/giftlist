@@ -1,6 +1,6 @@
 {
   "expo": {
-    "scheme": "com.hotsource.giftlist",
+    "scheme": "com.hsportal.giftlist",
     "name": "giftlist",
     "slug": "giftlist",
     "version": "1.0.0",
@@ -15,21 +15,21 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hotsource.giftlist"
+      "bundleIdentifier": "com.hsportal.giftlist"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hotsource.giftlist"
+      "package": "com.hsportal.giftlist"
     },
     "hooks": {
       "postPublish": [
         {
           "file": "sentry-expo/upload-sourcemaps",
           "config": {
-            "organization": "hotsource",
+            "organization": "hsportal",
             "project": "giftlist"
           }
         }
