@@ -1,4 +1,4 @@
-package com.hotsource.giftlist;
+package com.hsportal.giftlist;
 
 import android.os.Build;
 import android.os.Bundle;

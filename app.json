@@ -22,6 +22,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.hsportal.giftlist"
     },
     "hooks": {
@@ -35,7 +36,20 @@
         }
       ]
     },
-    "plugins": ["sentry-expo"],
+    "plugins": [
+      "sentry-expo",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "4dc35dba-b7a8-467c-9cc4-73725f0988f8"

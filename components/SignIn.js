@@ -22,10 +22,9 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId:
-      "634509221384-8ebojs8orh0lou3ogclhm4947k8ca4n5.apps.googleusercontent.com",
+    androidClientId: "634509221384-8ebojs8orh0lou3ogclhm4947k8ca4n5.apps.googleusercontent.com",
     redirectUri: makeRedirectUri({
-      scheme: "com.hotsource.giftlist",
+      scheme: "com.hsportal.giftlist",
     }),
   });
 
@@ -41,12 +40,9 @@ export default function SignIn() {
 
   const getUserInfo = async (accessToken, idToken) => {
     try {
-      const response = await fetch(
-        "https://www.googleapis.com/userinfo/v2/me",
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      const response = await fetch("https://www.googleapis.com/userinfo/v2/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       const googleUser = await response.json();
       // do something with userdata, ie: setUserInfo(googleUser);
@@ -112,12 +108,7 @@ export default function SignIn() {
           />
         </View>
         <View style={styles.signinButtons}>
-          <Button
-            mode="contained"
-            style={{ alignSelf: "center" }}
-            icon="login"
-            onPress={() => onPressSignIn()}
-          >
+          <Button mode="contained" style={{ alignSelf: "center" }} icon="login" onPress={() => onPressSignIn()}>
             Sign In
           </Button>
           <Button

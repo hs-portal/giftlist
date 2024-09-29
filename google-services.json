@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "114691817013",
+    "project_id": "giftlist-12777",
+    "storage_bucket": "giftlist-12777.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:114691817013:android:4eef1c58634ab84bb87b7c",
+        "android_client_info": {
+          "package_name": "com.hsportal.giftlist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJjuYE7L-rSBE0_RkO43j--_pxmt2S4-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

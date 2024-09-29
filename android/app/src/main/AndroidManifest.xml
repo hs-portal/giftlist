@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.hotsource.giftlist">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.hsportal.giftlist">
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
@@ -26,8 +26,9 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="com.hotsource.giftlist"/>
-        <data android:scheme="com.hotsource.giftlist"/>
+        <data android:scheme="com.hsportal.giftlist"/>
+        <data android:scheme="com.hsportal.giftlist"/>
+        <data android:scheme="exp+giftlist"/>
       </intent-filter>
     </activity>
     <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" android:exported="false"/>
