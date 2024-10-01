@@ -1,13 +1,7 @@
-import React from "react";
-import Realm from "realm";
-import { StyleSheet, View } from "react-native";
-import {
-  MD3LightTheme as DefaultTheme,
-  PaperProvider,
-} from "react-native-paper";
-import { AppProvider, UserProvider, createRealmContext } from "@realm/react";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text } from "react-native";
+import { MD3LightTheme as DefaultTheme, PaperProvider } from "react-native-paper";
 import SignIn from "../components/SignIn";
-import { ProfileData, Wishlist, WishlistItem } from "../schemas";
 import { ActivityIndicator } from "react-native-paper";
 import { DataProvider } from "./DataProvider";
 import { lightTheme, darkTheme } from "../theme";
@@ -21,56 +15,41 @@ const theme = {
 };
 
 const AppWrapper = ({ children }) => {
-  const realmConfig = {
-    schema: [ProfileData.schema, Wishlist.schema, WishlistItem.schema],
-  };
+  // Set an initializing state whilst Firebase connects
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState();
 
-  const { RealmProvider, useRealm, useObject, useQuery } =
-    createRealmContext(realmConfig);
+  // Handle user state changes
+  function onAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
 
-  const LoadingIndicator = () => {
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  if (initializing) {
     return (
       <View style={styles.activityContainer}>
         <ActivityIndicator animating={true} />
       </View>
     );
-  };
+  }
 
-  const OpenRealmBehaviorConfiguration = {
-    type: "openImmediately",
-  };
+  if (!user) {
+    return (
+      <View>
+        <Text>Login</Text>
+      </View>
+    );
+  }
 
   return (
-    <AppProvider id="giftlist-gzgyt">
-      <PaperProvider theme={theme}>
-        <UserProvider fallback={SignIn}>
-          <RealmProvider
-            sync={{
-              flexible: true,
-              newRealmFileBehavior: OpenRealmBehaviorConfiguration,
-              existingRealmFileBehavior: OpenRealmBehaviorConfiguration,
-              onError: console.error,
-              initialSubscriptions: {
-                update(subs, realm) {
-                  subs.add(realm.objects("ProfileData"));
-                  subs.add(realm.objects("Wishlist"));
-                  subs.add(realm.objects("WishlistItem"));
-                },
-              },
-            }}
-            fallback={LoadingIndicator}
-          >
-            <DataProvider
-              useRealm={useRealm}
-              useObject={useObject}
-              useQuery={useQuery}
-            >
-              {children}
-            </DataProvider>
-          </RealmProvider>
-        </UserProvider>
-      </PaperProvider>
-    </AppProvider>
+    <PaperProvider theme={theme}>
+      <DataProvider user={user}>{children}</DataProvider>
+    </PaperProvider>
   );
 };
 
